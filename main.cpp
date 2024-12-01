@@ -1,6 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
+#include "glm/ext.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -24,6 +24,7 @@
 #include <string>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <string>
 
 #define TAU (M_PI * 2.0)
 
@@ -57,8 +58,13 @@ bool onRotate = false;
 bool onFreeCam = true;
 bool SkyBoxExtra = false;
 float SCREEN_WIDTH = 800, SCREEN_HEIGHT = 600;
+bool isAnimating = false;
+
+double animationTime = 0.0;
+double lastUpdateTime = glfwGetTime();
 
 glm::vec3 point = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 defaultView = glm::vec3(0.0f, 100.0f, 400.0f);
 glm::vec3 PlanetPos = glm::vec3(0.0f, 0.0f, 0.0f);
 GLfloat lastX = (GLfloat)(SCREEN_WIDTH / 2.0);
 GLfloat lastY = (GLfloat)(SCREEN_HEIGHT / 2.0);
@@ -69,6 +75,17 @@ bool keys[1024];
 GLfloat SceneRotateY = 0.0f;
 GLfloat SceneRotateX = 0.0f;
 bool onPlanet = false;
+//orbit colors
+std::vector<glm::vec4> orbitColors = {
+	glm::vec4(0.54, 0.53, 0.53, 1.0), // Mercury - Gray
+	glm::vec4(0.79, 0.59, 0.30, 1.0), // Venus - Yellow
+	glm::vec4(0.03, 0.67, 0.98, 1.0), // Earth - Blue
+	glm::vec4(0.79, 0.35, 0.30, 1.0), // Mars - Red
+	glm::vec4(0.76, 0.52, 0.25, 1.0), // Jupiter - Orange
+	glm::vec4(0.9f, 0.9f, 0.5f, 1.0f), // Saturn - Light Yellow
+	glm::vec4(0.31, 0.70, 0.86, 1.0), // Uranus - Cyan
+	glm::vec4(0.23, 0.35, 0.78, 1.0)  // Neptune - Dark Blue
+};
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -121,7 +138,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	GLfloat xoffset = (GLfloat)(xpos - lastX);
 	GLfloat yoffset = (GLfloat)(lastY - ypos);
 	xoff = xoffset;
-	yoff = yoff;
+	yoff = yoffset;
 
 	lastX = (GLfloat)xpos;
 	lastY = (GLfloat)ypos;
@@ -145,7 +162,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (onFreeCam && !camera.FreeCam)
 	{
-		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+			onRotate = true;
+		else if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+			onRotate = true;
+		else if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
 			onRotate = true;
 		else onRotate = false;
 	}
@@ -195,7 +216,7 @@ int main() {
 		std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
 
 	FT_Face face;
-	if (FT_New_Face(ft, "fonts/ff.otf", 0, &face))
+	if (FT_New_Face(ft, "fonts/italic.otf", 0, &face))
 		std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
 
 	// Set size to load glyphs as
@@ -259,6 +280,8 @@ int main() {
 	Shader SkyboxShader("skybox.vs", "skybox.fs");
 	Shader texShader("simpleVS.vs", "texFS.fs");
 	Shader TextShader("TextShader.vs", "TextShader.fs");
+	Shader orbitShader("orbitshadervs.vs", "orbitshaderfs.fs");
+	
 	/* SHADERS */
 
 	// PROJECTION FOR TEXT RENDER
@@ -412,7 +435,7 @@ int main() {
 	unsigned int t_sun = loadTexture("resources/planets/2k_sun.jpg");
 	unsigned int texture_moon = loadTexture("resources/planets/2k_moon.jpg");
 	unsigned int texture_mercury = loadTexture("resources/planets/2k_mercury.jpg");
-	unsigned int texture_venus = loadTexture("resources/planets/2k_mercury.jpg");
+	unsigned int texture_venus = loadTexture("resources/planets/2k_venus.jpg");
 	unsigned int texture_mars = loadTexture("resources/planets/2k_mars.jpg");
 	unsigned int texture_jupiter = loadTexture("resources/planets/2k_jupiter.jpg");
 	unsigned int texture_saturn = loadTexture("resources/planets/2k_saturn.jpg");
@@ -459,10 +482,11 @@ int main() {
 	GLfloat camX = 10.0f;
 	GLfloat camZ = 10.0f;
 	
-	camera.Position = glm::vec3(0.0f, 250.0f, -450.0f);
+	camera.Position = glm::vec3(0.0f, 665.0f, -815.0f);
 	camera.Yaw = 90.0f;
 	camera.Pitch = -40.0f;
 	camera.ProcessMouseMovement(xoff, yoff);
+	camera.Zoom = 45.0f;
 	camera.FreeCam = false;
 	onFreeCam = true;
 	glm::mat4 view;
@@ -504,6 +528,8 @@ int main() {
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		else glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
+		
+
 		// render
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -517,28 +543,52 @@ int main() {
 		glm::vec3 viewPos;
 		
 		SimpleShader.Use();
+		SimpleShader.setBool("useTexture", true);
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 10000.0f);
 		SimpleShader.setMat4("model", model);
 		SimpleShader.setMat4("view", view);
 		SimpleShader.setMat4("projection", projection);
 
+
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, t_sun);
 
 
+		//TIME MANAGEMENT
+		double currentTime = glfwGetTime();
+
+		// Calculate the time difference since the last frame
+		double deltaTime = currentTime - lastUpdateTime;
+
+		// Update animationTime only if the animation is active
+		if (isAnimating)
+		{
+			animationTime += deltaTime;
+		}
+
+		// Update lastUpdateTime for the next frame
+		lastUpdateTime = currentTime;
+
+		//TIME MANAGEMENT
+
 		/* SUN */
-		glm::mat4 model_sun;
+		glm::mat4 model_sun = glm::mat4(1.0f);
+
 		model_sun = glm::rotate(model_sun, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
-		model_sun = glm::rotate(model_sun, (GLfloat)glfwGetTime() * glm::radians(23.5f) * 0.25f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_sun = glm::rotate(model_sun, (GLfloat)animationTime * glm::radians(23.5f) * 0.25f, glm::vec3(0.0f, 0.0f, 1.f));
 		model_sun = glm::translate(model_sun, point);
 		SimpleShader.setMat4("model", model_sun);
 		Sun.Draw();
 		/* SUN */
 
+
 		/* MERCURY */
-		glm::mat4 model_mercury;
-		double xx = sin(glfwGetTime() * PlanetSpeed) * 100.0f *2.0f *1.3f;
-		double zz = cos(glfwGetTime() * PlanetSpeed) * 100.0f *2.0f *1.3f;
+		glm::mat4 model_mercury = glm::mat4(1.0f);
+
+		double xx = sin(animationTime * PlanetSpeed) * 100.0f * 2.0f * 1.3f;
+		double zz = cos(animationTime * PlanetSpeed) * 100.0f * 2.0f * 1.3f;
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_mercury);
 		model_mercury = glm::translate(model_mercury, point);
@@ -547,15 +597,16 @@ int main() {
 		model_mercury = glm::translate(model_mercury, glm::vec3(xx, 0.0f, zz));
 		PlanetsPositions[0] = glm::vec3(xx, 0.0f, zz);
 		model_mercury = glm::rotate(model_mercury, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
-		model_mercury = glm::rotate(model_mercury, (GLfloat)glfwGetTime() * glm::radians(-90.0f) * 0.05f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_mercury = glm::rotate(model_mercury, (GLfloat)animationTime * glm::radians(-90.0f) * 0.05f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_mercury);
 		Mercury.Draw();
 		/* MERCURY */
 
+
 		/* VENUS */
 		glm::mat4 model_venus;
-		xx = sin(glfwGetTime() * PlanetSpeed *0.75f) * 100.0f * 3.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.75f) * 100.0f * 3.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed *0.75f) * 100.0f * 3.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.75f) * 100.0f * 3.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_venus);
 		model_venus = glm::translate(model_venus, point);
@@ -565,15 +616,15 @@ int main() {
 		PlanetsPositions[1] = glm::vec3(xx, 0.0f, zz);
 		model_venus = glm::rotate(model_venus, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_venus = glm::rotate(model_venus, glm::radians(-132.5f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_venus = glm::rotate(model_venus, (GLfloat)glfwGetTime() * glm::radians(-132.5f) * 0.012f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_venus = glm::rotate(model_venus, (GLfloat)animationTime * glm::radians(-132.5f) * 0.012f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_venus);
 		Venus.Draw();
 		/* VENUS */
 
 		/* EARTH */
 		glm::mat4 model_earth;
-		xx = sin(glfwGetTime() * PlanetSpeed * 0.55f) * 100.0f * 4.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.55f) * 100.0f * 4.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 0.55f) * 100.0f * 4.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.55f) * 100.0f * 4.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_earth);
 		model_earth = glm::translate(model_earth, point);
@@ -584,7 +635,7 @@ int main() {
 		PlanetsPositions[2] = glm::vec3(xx, 0.0f, zz);
 		model_earth = glm::rotate(model_earth, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_earth = glm::rotate(model_earth, glm::radians(-33.25f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_earth = glm::rotate(model_earth, (GLfloat)glfwGetTime() * glm::radians(-33.25f) * 2.0f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_earth = glm::rotate(model_earth, (GLfloat)animationTime * glm::radians(-33.25f) * 2.0f, glm::vec3(0.0f, 0.0f, 1.f));
 		camera.LookAtPos = glm::vec3(model_earth[3][0], model_earth[3][1], model_earth[3][2]);
 		SimpleShader.setMat4("model", model_earth);
 		Earth.Draw();  
@@ -593,8 +644,8 @@ int main() {
 		
 		/* MOON */
 		glm::mat4 model_moon;
-		xx = sin(glfwGetTime() * PlanetSpeed * 67.55f) * 100.0f * 0.5f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 67.55f) * 100.0f * 0.5f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 67.55f) * 100.0f * 0.5f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 67.55f) * 100.0f * 0.5f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_moon);
 		model_moon = glm::rotate(model_moon, glm::radians(SceneRotateY), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -603,7 +654,7 @@ int main() {
 		model_moon = glm::translate(model_moon, glm::vec3(xx, 0.0f, zz));
 		model_moon = glm::rotate(model_moon, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_moon = glm::rotate(model_moon, glm::radians(-32.4f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_moon = glm::rotate(model_moon, (GLfloat)glfwGetTime() * glm::radians(-32.4f) * 3.1f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_moon = glm::rotate(model_moon, (GLfloat)animationTime * glm::radians(-32.4f) * 3.1f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_moon);
 		Moon.Draw();
 		/* MOON */
@@ -611,8 +662,8 @@ int main() {
 
 		/* MARS */
 		glm::mat4 model_mars;
-		xx = sin(glfwGetTime() * PlanetSpeed * 0.35f) * 100.0f * 5.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.35f) * 100.0f * 5.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 0.35f) * 100.0f * 5.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.35f) * 100.0f * 5.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_mars);
 		model_mars = glm::translate(model_mars, point);
@@ -622,15 +673,15 @@ int main() {
 		PlanetsPositions[3] = glm::vec3(xx, 0.0f, zz);
 		model_mars = glm::rotate(model_mars, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_mars = glm::rotate(model_mars, glm::radians(-32.4f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_mars = glm::rotate(model_mars, (GLfloat)glfwGetTime() * glm::radians(-32.4f) * 2.1f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_mars = glm::rotate(model_mars, (GLfloat)animationTime * glm::radians(-32.4f) * 2.1f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_mars);
 		Mars.Draw();
 		/* MARS */
 
 		/* JUPITER */
 		glm::mat4 model_jupiter;
-		xx = sin(glfwGetTime() * PlanetSpeed * 0.2f) * 100.0f * 6.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.2f) * 100.0f * 6.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 0.2f) * 100.0f * 6.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.2f) * 100.0f * 6.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_jupiter);
 		model_jupiter = glm::translate(model_jupiter, point);
@@ -640,15 +691,15 @@ int main() {
 		PlanetsPositions[4] = glm::vec3(xx, 0.0f, zz);
 		model_jupiter = glm::rotate(model_jupiter, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_jupiter = glm::rotate(model_jupiter, glm::radians(-23.5f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_jupiter = glm::rotate(model_jupiter, (GLfloat)glfwGetTime() * glm::radians(-23.5f) * 4.5f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_jupiter = glm::rotate(model_jupiter, (GLfloat)animationTime * glm::radians(-23.5f) * 4.5f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_jupiter);
 		Jupiter.Draw();
 		/* JUPITER */
 
 		/* SATURN */
 		glm::mat4 model_saturn;
-		xx = sin(glfwGetTime() * PlanetSpeed * 0.15f) * 100.0f * 7.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.15f) * 100.0f * 7.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 0.15f) * 100.0f * 7.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.15f) * 100.0f * 7.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_saturn);
 		model_saturn = glm::translate(model_saturn, point);
@@ -659,15 +710,15 @@ int main() {
 		PlanetsPositions[5] = glm::vec3(xx, 0.0f, zz);
 		model_saturn = glm::rotate(model_saturn, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_saturn = glm::rotate(model_saturn, glm::radians(-34.7f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_saturn = glm::rotate(model_saturn, (GLfloat)glfwGetTime() * glm::radians(-34.7f) * 4.48f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_saturn = glm::rotate(model_saturn, (GLfloat)animationTime * glm::radians(-34.7f) * 4.48f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_saturn);
 		Saturn.Draw();
 		/* SATURN */
 
 		/* URANUS */
 		glm::mat4 model_uranus;
-		xx = sin(glfwGetTime() * PlanetSpeed * 0.1f) * 100.0f * 8.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.1f) * 100.0f * 8.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 0.1f) * 100.0f * 8.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.1f) * 100.0f * 8.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_uranus);
 		model_uranus = glm::translate(model_uranus, point);
@@ -677,15 +728,15 @@ int main() {
 		PlanetsPositions[6] = glm::vec3(xx, 0.0f, zz);
 		model_uranus = glm::rotate(model_uranus, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_uranus = glm::rotate(model_uranus, glm::radians(-99.0f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_uranus = glm::rotate(model_uranus, (GLfloat)glfwGetTime() * glm::radians(-99.0f) * 4.5f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_uranus = glm::rotate(model_uranus, (GLfloat)animationTime * glm::radians(-99.0f) * 4.5f, glm::vec3(0.0f, 0.0f, 1.f));
 		SimpleShader.setMat4("model", model_uranus);
 		Uranus.Draw();
 		/* URANUS */
 
 		/* NEPTUNE */
 		glm::mat4 model_neptune;
-		xx = sin(glfwGetTime() * PlanetSpeed * 0.08f) * 100.0f * 9.0f *1.3f;
-		zz = cos(glfwGetTime() * PlanetSpeed * 0.08f) * 100.0f * 9.0f *1.3f;
+		xx = sin(animationTime * PlanetSpeed * 0.08f) * 100.0f * 9.0f *1.3f;
+		zz = cos(animationTime * PlanetSpeed * 0.08f) * 100.0f * 9.0f *1.3f;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_neptune);
 
@@ -696,7 +747,7 @@ int main() {
 		PlanetsPositions[7] = glm::vec3(xx, 0.0f, zz);
 		model_neptune = glm::rotate(model_neptune, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.f));
 		model_neptune = glm::rotate(model_neptune, glm::radians(-30.2f), glm::vec3(0.0f, 1.0f, 0.f));
-		model_neptune = glm::rotate(model_neptune, (GLfloat)glfwGetTime() * glm::radians(-30.2f) * 4.0f, glm::vec3(0.0f, 0.0f, 1.f));
+		model_neptune = glm::rotate(model_neptune, (GLfloat)animationTime * glm::radians(-30.2f) * 4.0f, glm::vec3(0.0f, 0.0f, 1.f));
 		
 		SimpleShader.setMat4("model", model_neptune);
 		Neptune.Draw();
@@ -706,11 +757,16 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, texture_venus);
 
 		/* ORBITS */
+		SimpleShader.Use();
+		SimpleShader.setBool("useTexture", false);
+
 		glBindVertexArray(VAO_t);
-		glLineWidth(1.0f);
+		glLineWidth(2.0f);
 		glm::mat4 modelorb;
 		for (float i = 2; i < 10; i++)
 		{
+
+			SimpleShader.setVec4("orbitColor", orbitColors[i-2]);
 			modelorb = glm::mat4(1);
 			modelorb = glm::translate(modelorb, point);
 			modelorb = glm::rotate(modelorb, glm::radians(SceneRotateY), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -720,6 +776,7 @@ int main() {
 			glDrawArrays(GL_LINE_LOOP, 0, (GLsizei)orbVert.size() / 3);
 
 		}
+		SimpleShader.setVec4("orbitColor", glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
 		modelorb = glm::mat4(1);
 		modelorb = glm::rotate(modelorb, glm::radians(SceneRotateY), glm::vec3(1.0f, 0.0f, 0.0f));
 		modelorb = glm::rotate(modelorb, glm::radians(SceneRotateX), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -744,6 +801,7 @@ int main() {
 			modelorb = glm::rotate(modelorb, glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 			modelorb = glm::scale(modelorb, glm::vec3(rr, rr, rr));
 			SimpleShader.setMat4("model", modelorb);
+
 			glDrawArrays(GL_LINE_LOOP, 0, (GLsizei)orbVert.size() / 3);
 			if (i == 15)
 				rr += 0.030f;
@@ -759,6 +817,7 @@ int main() {
 		/* DRAW SKYBOX */
 		glDepthFunc(GL_LEQUAL);  
 		SkyboxShader.Use();
+		//skybox's rotation
 		view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
 		SkyboxShader.setMat4("view", view);
 		SkyboxShader.setMat4("projection", projection);
@@ -766,98 +825,129 @@ int main() {
 		glBindVertexArray(skyboxVAO);
 		glActiveTexture(GL_TEXTURE0);
 		if (SkyBoxExtra)
-			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTextureExtra);
-		else
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		else
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTextureExtra);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS);  
 		/* DRAW SKYBOX */
+		if (isAnimating) {
+			RenderText(TextShader, "Animation: Running", SCREEN_WIDTH - 250.0f, 20.0f, 0.5f, glm::vec3(0.0f, 1.0f, 0.0f)); // Green text
+		}
+		else {
+			RenderText(TextShader, "Animation: Paused", SCREEN_WIDTH - 250.0f, 20.0f, 0.5f, glm::vec3(1.0f, 0.0f, 0.0f)); // Red text
+		}
+		RenderText(TextShader, "Camera's Postion " + glm::to_string(camera.Position), 20.0f, 60.0f, 0.5f, glm::vec3(0.3, 0, 1)); // Green text
+		RenderText(TextShader, "Camera's Yaw (" + std::to_string(camera.Yaw) + ")", 20.0f, 40.0f, 0.5f, glm::vec3(0.3, 0, 1)); // Green text
+		RenderText(TextShader, "Camera's Pitch (" + std::to_string(camera.Pitch) + ")", 20.0f, 20.0f, 0.5f, glm::vec3(0.3, 0, 1)); // Green text
+		
 
 		/* PLANET TRACKING + SHOW INFO OF PLANET */
 		switch (PlanetView)
 		{
-		case 1:
-			viewX = sin(glfwGetTime() * PlanetSpeed) * 100.0f *3.5f * 1.3f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed) * 100.0f *3.5f * 1.3f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[0], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+			case 1: // Sun
 
-		case 2:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.75f) * 100.0f *4.5f * 1.2f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.75f) * 100.0f *4.5f * 1.2f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[1], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+				viewPos = glm::vec3(0.0f, 100.0f, 300.0f); // Adjust the position as needed
+				view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-		case 3:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.55f) * 100.0f *5.5f * 1.2f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.55f) * 100.0f *5.5f * 1.2f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[2], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
 
-		case 4:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.35f) * 100.0f *6.0f * 1.2f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.35f) * 100.0f *6.0f * 1.2f;
-			viewPos = glm::vec3(viewX, 20.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[3], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+			case 2:
+				viewX = sin(animationTime * PlanetSpeed) * 100.0f *3.5f * 1.3f;
+				viewZ = cos(animationTime * PlanetSpeed) * 100.0f *3.5f * 1.3f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[0], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-		case 5:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.2f) * 100.0f *7.5f * 1.3f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.2f) * 100.0f *7.5f * 1.3f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[4], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+			case 3:
+				viewX = sin(animationTime * PlanetSpeed * 0.75f) * 100.0f *4.5f * 1.2f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.75f) * 100.0f *4.5f * 1.2f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[1], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-		case 6:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.15f) * 100.0f *8.5f * 1.3f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.15f) * 100.0f *8.5f * 1.3f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[5], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+			case 4:
+				viewX = sin(animationTime * PlanetSpeed * 0.55f) * 100.0f *5.5f * 1.2f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.55f) * 100.0f *5.5f * 1.2f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[2], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-		case 7:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.1f) * 100.0f *9.5f * 1.3f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.1f) * 100.0f *9.5f * 1.3f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[6], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+			case 5:
+				viewX = sin(animationTime * PlanetSpeed * 0.35f) * 100.0f *6.0f * 1.2f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.35f) * 100.0f *6.0f * 1.2f;
+				viewPos = glm::vec3(viewX, 20.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[3], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-		case 8:
-			viewX = sin(glfwGetTime() * PlanetSpeed * 0.08f) * 100.0f *10.5f * 1.3f;
-			viewZ = cos(glfwGetTime() * PlanetSpeed * 0.08f) * 100.0f *10.5f * 1.3f;
-			viewPos = glm::vec3(viewX, 50.0f, viewZ);
-			view = glm::lookAt(viewPos, PlanetsPositions[7], glm::vec3(0.0f, 1.0f, 0.0f));
-			ShowInfo(TextShader);
-			break;
+			case 6:
+				viewX = sin(animationTime * PlanetSpeed * 0.2f) * 100.0f *7.5f * 1.3f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.2f) * 100.0f *7.5f * 1.3f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[4], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-		case 0:
-			view = camera.GetViewMatrix();
+			case 7:
+				viewX = sin(animationTime * PlanetSpeed * 0.15f) * 100.0f *8.5f * 1.3f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.15f) * 100.0f *8.5f * 1.3f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[5], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-			RenderText(TextShader, "SOLAR SYSTEM ", 25.0f, SCREEN_HEIGHT - 30.0f, 0.50f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "STARS: 1 (SUN) ", 25.0f, SCREEN_HEIGHT - 55.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "PLANETS: 8 (MAYBE 9) ", 25.0f, SCREEN_HEIGHT - 80.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "SATELLITES: 415 ", 25.0f, SCREEN_HEIGHT - 105.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "COMMETS: 3441 ", 25.0f, SCREEN_HEIGHT - 130.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+			case 8:
+				viewX = sin(animationTime * PlanetSpeed * 0.1f) * 100.0f *9.5f * 1.3f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.1f) * 100.0f *9.5f * 1.3f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[6], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
 
-			if (camera.FreeCam)
-				RenderText(TextShader, "FREE CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			if (onFreeCam)
-				RenderText(TextShader, "STATIC CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			break;
-		}
-		if (PlanetView > 0)
-			RenderText(TextShader, "PLANET CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+			case 9:
+				viewX = sin(animationTime * PlanetSpeed * 0.08f) * 100.0f *10.5f * 1.3f;
+				viewZ = cos(animationTime * PlanetSpeed * 0.08f) * 100.0f *10.5f * 1.3f;
+				viewPos = glm::vec3(viewX, 50.0f, viewZ);
+				view = glm::lookAt(viewPos, PlanetsPositions[7], glm::vec3(0.0f, 1.0f, 0.0f));
+				ShowInfo(TextShader);
+				break;
+		
+
+			case 0:
+				view = camera.GetViewMatrix();
+				
+				RenderText(TextShader, "SOLAR SYSTEM ", 25.0f, SCREEN_HEIGHT - 40.0f, 1.0f,
+					glm::vec3(0.7f, 0.7f, 0.11f));
+				RenderText(TextShader, "STARS: 1 (SUN) ", 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f,
+					glm::vec3(0.7f, 0.7f, 0.11f));
+				RenderText(TextShader, "PLANETS: 8 ", 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f,
+					glm::vec3(0.7f, 0.7f, 0.11f));
+				RenderText(TextShader, "SATELLITES: 415 ", 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f,
+					glm::vec3(0.7f, 0.7f, 0.11f));
+				RenderText(TextShader, "COMETS: 3441 ", 25.0f, SCREEN_HEIGHT - 130.0f, 0.35f,
+					glm::vec3(0.7f, 0.7f, 0.11f));
+			
+
+				if (camera.FreeCam)
+					RenderText(TextShader, "FREE CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+				if (onFreeCam)
+					RenderText(TextShader, "STATIC CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+				break;
+
+			}
+			if (PlanetView > 1)
+				RenderText(TextShader, "PLANET CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f,
+					glm::vec3(0.7f, 0.7f, 0.11f));
+			else if (PlanetView == 1)
+				RenderText(TextShader, "SUN CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f,
+					glm::vec3(1.0f, 1.0f, 0.0f));
+
 		/* PLANET TRACKING + SHOW INFO OF PLANET */
 
 
@@ -866,6 +956,8 @@ int main() {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+	
+	
 
 	glDeleteVertexArrays(1, &VAO_t);
 	glDeleteBuffers(1, &VBO_t);
@@ -902,16 +994,39 @@ void processInput(GLFWwindow *window)
 		PlanetView = 0;
 		onFreeCam = true;
 		camera.FreeCam = false;
-		camera.Position = glm::vec3(0.0f, 250.0f, -450.0f);
+		camera.Position = glm::vec3(0.0f, 665.0f, -815.0f);
 		camera.Yaw = 90.0f;
 		camera.Pitch = -40.0f;
 		camera.GetViewMatrix();
 		camera.ProcessMouseMovement(xoff,yoff);
 	}
+	static bool PKeyPressed = false;
 
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
+	{
+		if (!PKeyPressed)
+		{
+			isAnimating = !isAnimating;
+			PKeyPressed = true;
+		}
+	}
+	else
+	{
+		PKeyPressed = false;
+	}
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 	{
 		PlanetView = 1;
+		Info.Name = "Sun";
+		Info.OrbitSpeed = "N/A";
+		Info.Mass = "1,989,100";
+		Info.Gravity = "28 g";
+		onFreeCam = false;
+		camera.FreeCam = false;
+	}
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	{
+		PlanetView = 2;
 		Info.Name = "MERCURY";
 		Info.OrbitSpeed = "47,87";
 		Info.Mass = "0.32868";
@@ -919,9 +1034,9 @@ void processInput(GLFWwindow *window)
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
 	{
-		PlanetView = 2;
+		PlanetView = 3;
 		Info.Name = "VENUS";
 		Info.OrbitSpeed = "35,02";
 		Info.Mass = "0.32868";
@@ -929,9 +1044,9 @@ void processInput(GLFWwindow *window)
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
 	{
-		PlanetView = 3;
+		PlanetView = 4;
 		Info.Name = "EARTH";
 		Info.OrbitSpeed = "29,76";
 		Info.Mass = "5.97600";
@@ -939,9 +1054,9 @@ void processInput(GLFWwindow *window)
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
 	{
-		PlanetView = 4;
+		PlanetView = 5;
 		Info.Name = "MARS";
 		Info.OrbitSpeed = "24,13";
 		Info.Mass = "0.63345";
@@ -949,18 +1064,18 @@ void processInput(GLFWwindow *window)
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
 	{
-		PlanetView = 5;
+		PlanetView = 6;
 		Info.Name = "JUPITER";
 		Info.OrbitSpeed = "13,07";
 		Info.Mass = "1876.64328";
 		Info.Gravity = "2.55";
 		onFreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)	
 	{
-		PlanetView = 6;
+		PlanetView = 7;
 		Info.Name = "SATURN";
 		Info.OrbitSpeed = "9,67";
 		Info.Mass = "561.80376";
@@ -968,9 +1083,9 @@ void processInput(GLFWwindow *window)
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
 	{
-		PlanetView = 7;
+		PlanetView = 8;
 		Info.Name = "URANUS";
 		Info.OrbitSpeed = "6,84";
 		Info.Mass = "86.05440";
@@ -978,9 +1093,9 @@ void processInput(GLFWwindow *window)
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)
 	{
-		PlanetView = 8;
+		PlanetView = 9;
 		Info.Name = "NEPTUNE";
 		Info.OrbitSpeed = "5,48";
 		Info.Mass = "101.59200";
@@ -1113,8 +1228,19 @@ void RenderText(Shader &s, std::string text, GLfloat x, GLfloat y, GLfloat scale
 
 void ShowInfo(Shader &s)
 {
-	RenderText(s, "Planet: " + Info.Name, 25.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-	RenderText(s, "Avarage Orbital Speed (km/s): " + Info.OrbitSpeed, 25.0f, SCREEN_HEIGHT - 50.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-	RenderText(s, "Mass (kg * 10^24): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-	RenderText(s, "Gravity (g): " + Info.Gravity, 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+	if (PlanetView == 1)
+	{
+		// Display Sun information
+		RenderText(s, "Star: " + Info.Name, 25.0f, SCREEN_HEIGHT - 40.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+		RenderText(s, "Mass (kg * 10^30): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Surface Temperature (K): 5778", 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Radius (km): 696,340", 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+	}
+	else
+	{
+		RenderText(s, "Planet: " + Info.Name, 25.0f, SCREEN_HEIGHT - 40.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+		RenderText(s, "Avarage Orbital Speed (km/s): " + Info.OrbitSpeed, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Mass (kg * 10^24): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Gravity (g): " + Info.Gravity, 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+	}
 }

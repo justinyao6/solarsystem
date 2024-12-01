@@ -1,5 +1,8 @@
 # OpenGL-SolarSystem
 Simple 3D Solar System model created in C++/OpenGL/GLFW 
+Inspired by webGL App by NASA (https://eyes.nasa.gov/apps/solar-system/#/home) 
+and 1kar(https://github.com/1kar/OpenGL-SolarSystem?tab=readme-ov-file)
+
 
 ## Getting Started
 The repository contains:
@@ -10,16 +13,10 @@ The repository contains:
  ### Release builds
   If you just want to run the application, in the bin folder you will find executable files for x86/x64 OS
  
- ### Project for Visual Stuido
-  If you want open project in Visual Studio, just open the file DiamondEngine.vcxproj
-  
- ### Another way
-  You can also create a new project using code and libraries from this repository.
-  
-  ## Preview
-   #### STATIC CAM
-   Press SPACE to enable STATIC CAM mode.<br>
-   Use WASD to move around the solar system model, and use the mouse with the right button pressed to rotate the model.
+ 
+ #### STATIC CAM
+ Press SPACE to enable STATIC CAM mode.<br>
+ Use WASD to move around the solar system model, and use the mouse with the right button pressed to rotate the model.
       
   ![alt text](https://i.ibb.co/Gx4xGKC/1.png)
   
@@ -55,5 +52,3 @@ The repository contains:
 * [Default SkyBox](http://www.custommapmakers.org/skyboxes.php) [Blue SkyBox](https://opengameart.org/content/space-skyboxes-0) - SkyBoxes used
 * [Font](https://www.fonts-online.ru/font/Korataki-Italic) - Font used ([Font author](http://typodermicfonts.com/))
 
-## LICENSE
-This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/1kar/OpenGL-SolarSystem/blob/master/LICENSE) file for details
