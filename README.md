@@ -34,8 +34,7 @@ The repository contains:
    
   ![alt text](https://i.ibb.co/q5xPK3R/3.png)
  
-   #### SkyBox
-   Press E to change skybox
+  
    
  ## Built With
 
