@@ -13,7 +13,7 @@
 #include "Shader.h"
 #include "Sphere.h"
 #include "Camera.h"
-
+#include "iomanip"
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -61,8 +61,8 @@ float SCREEN_WIDTH = 800, SCREEN_HEIGHT = 600;
 bool isAnimating = false;
 
 double animationTime = 0.0;
-double lastUpdateTime = glfwGetTime();
-
+double lastUpdateTime = glfwGetTime();      
+float orbitSpeedMultiplier = 1.0f;  
 glm::vec3 point = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 defaultView = glm::vec3(0.0f, 100.0f, 400.0f);
 glm::vec3 PlanetPos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -564,7 +564,7 @@ int main() {
 		// Update animationTime only if the animation is active
 		if (isAnimating)
 		{
-			animationTime += deltaTime;
+			animationTime += deltaTime * orbitSpeedMultiplier;
 		}
 
 		// Update lastUpdateTime for the next frame
@@ -842,6 +842,10 @@ int main() {
 		RenderText(TextShader, "Camera's Yaw (" + std::to_string(camera.Yaw) + ")", 20.0f, 40.0f, 0.5f, glm::vec3(0.3, 0, 1)); // Green text
 		RenderText(TextShader, "Camera's Pitch (" + std::to_string(camera.Pitch) + ")", 20.0f, 20.0f, 0.5f, glm::vec3(0.3, 0, 1)); // Green text
 		
+		std::ostringstream oss;
+		oss << std::fixed << std::setprecision(1) << orbitSpeedMultiplier;
+		RenderText(TextShader, "Orbit Speed: x" + oss.str(), SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 50.0f, 0.35f,
+			glm::vec3(0.7f, 0.7f, 0.11f));
 
 		/* PLANET TRACKING + SHOW INFO OF PLANET */
 		switch (PlanetView)
@@ -1102,6 +1106,22 @@ void processInput(GLFWwindow *window)
 		Info.Gravity = "1.17";
 		onFreeCam = false;
 		camera.FreeCam = false;
+	}
+
+	// Increase orbit speed
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	{
+		orbitSpeedMultiplier += 0.01f;
+		if (orbitSpeedMultiplier > 10.0f)
+			orbitSpeedMultiplier = 10.0f; // Limit maximum speed
+	}
+
+	// Decrease orbit speed
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	{
+		orbitSpeedMultiplier -= 0.01f;
+		if (orbitSpeedMultiplier < 0.1f)
+			orbitSpeedMultiplier = 0.1f; // Limit minimum speed
 	}
 
 } 
