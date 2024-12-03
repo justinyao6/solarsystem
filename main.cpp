@@ -123,6 +123,12 @@ struct PlanetInfo {
 	std::string OrbitSpeed;
 	std::string Mass;
 	std::string Gravity;
+	std::string Diameter;             // km
+	std::string DistanceFromSun;      // million km
+	std::string OrbitalPeriod;        // Earth days
+	std::string RotationPeriod;       // Earth hours
+	std::string SurfaceTemp;
+	std::string NotableFeatures;
 };
 PlanetInfo Info;
 
@@ -1031,12 +1037,29 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 	{
 		PlanetView = 2;
-		Info.Name = "MERCURY";
-		Info.OrbitSpeed = "47,87";
-		Info.Mass = "0.32868";
-		Info.Gravity = "0.38";
+		// Mercury
+		Info.Name = "Mercury";
+		Info.OrbitSpeed = "47.87";     // km/s
+		Info.Mass = "0.330";           // kg * 10^24
+		Info.Diameter = "4879.0";      // km
+		Info.DistanceFromSun = "57.9"; // million km
+		Info.OrbitalPeriod = "88 Earth days";
+		Info.Gravity = "0.38";         // g
+		Info.SurfaceTemp = "333.0";    // °F (average temperature)
+
 		onFreeCam = false;
 		camera.FreeCam = false;
+
+		/*
+		* 		RenderText(s, "Planet: " + Info.Name, 25.0f, SCREEN_HEIGHT - 40.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+		RenderText(s, "Avarage Orbital Speed (km/s): " + Info.OrbitSpeed, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Mass (kg * 10^24): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Diameter (km): " + Info.Diameter, 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Distance From Sun (km^6): " + Info.DistanceFromSun, 25.0f, SCREEN_HEIGHT - 130.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Orbital Period " + Info.OrbitalPeriod, 25.0f, SCREEN_HEIGHT - 150.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Gravity (g): " + Info.Gravity, 25.0f, SCREEN_HEIGHT - 170.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Surface Temperature (°F): " + Info.SurfaceTemp, 25.0f, SCREEN_HEIGHT - 190.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		*/
 	}
 	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
 	{
@@ -1045,6 +1068,11 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "35,02";
 		Info.Mass = "0.32868";
 		Info.Gravity = "0.90";
+		Info.Diameter = "12104.0";      // km
+		Info.DistanceFromSun = "108.2"; // million km
+		Info.OrbitalPeriod = "225 days";
+		Info.SurfaceTemp = "864.0";
+
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
@@ -1055,6 +1083,10 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "29,76";
 		Info.Mass = "5.97600";
 		Info.Gravity = "1";
+		Info.Diameter = "12742.0"; // km
+		Info.DistanceFromSun = "149.6"; // million km
+		Info.OrbitalPeriod = "365.25";  // Earth days
+		Info.SurfaceTemp = "59.0";
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
@@ -1065,6 +1097,10 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "24,13";
 		Info.Mass = "0.63345";
 		Info.Gravity = "0.38";
+		Info.Diameter = "6779.0";       // km
+		Info.DistanceFromSun = "227.9"; // million km
+		Info.OrbitalPeriod = "687 days";
+		Info.SurfaceTemp = "- 81.0";
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
@@ -1075,6 +1111,10 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "13,07";
 		Info.Mass = "1876.64328";
 		Info.Gravity = "2.55";
+		Info.Diameter = "139820.0";      // km
+		Info.DistanceFromSun = "778.5";  // million km
+		Info.OrbitalPeriod = "11.86 years";
+		Info.SurfaceTemp = " - 234.0";
 		onFreeCam = false;
 	}
 	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)	
@@ -1084,6 +1124,10 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "9,67";
 		Info.Mass = "561.80376";
 		Info.Gravity = "1.12";
+		Info.Diameter = "116460.0";      // km
+		Info.DistanceFromSun = "1433.5"; // million km
+		Info.OrbitalPeriod = "29.46 years";
+		Info.SurfaceTemp = "- 288.0";
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
@@ -1094,6 +1138,10 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "6,84";
 		Info.Mass = "86.05440";
 		Info.Gravity = "0.97";
+		Info.Diameter = "50724.0";       // km
+		Info.DistanceFromSun = "2872.5"; // million km
+		Info.OrbitalPeriod = "84 years";
+		Info.SurfaceTemp = "357.0";
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
@@ -1104,6 +1152,10 @@ void processInput(GLFWwindow *window)
 		Info.OrbitSpeed = "5,48";
 		Info.Mass = "101.59200";
 		Info.Gravity = "1.17";
+		Info.Diameter = "49244.0";        // km
+		Info.DistanceFromSun = "4495.1";  // million km
+		Info.OrbitalPeriod = "164.8 years";
+		Info.SurfaceTemp = "- 373.0";
 		onFreeCam = false;
 		camera.FreeCam = false;
 	}
@@ -1253,7 +1305,7 @@ void ShowInfo(Shader &s)
 		// Display Sun information
 		RenderText(s, "Star: " + Info.Name, 25.0f, SCREEN_HEIGHT - 40.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
 		RenderText(s, "Mass (kg * 10^30): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-		RenderText(s, "Surface Temperature (K): 5778", 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Surface Temperature (°F): 9,929", 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
 		RenderText(s, "Radius (km): 696,340", 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
 	}
 	else
@@ -1261,6 +1313,20 @@ void ShowInfo(Shader &s)
 		RenderText(s, "Planet: " + Info.Name, 25.0f, SCREEN_HEIGHT - 40.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
 		RenderText(s, "Avarage Orbital Speed (km/s): " + Info.OrbitSpeed, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
 		RenderText(s, "Mass (kg * 10^24): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-		RenderText(s, "Gravity (g): " + Info.Gravity, 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Diameter (km): " + Info.Diameter, 25.0f, SCREEN_HEIGHT - 110.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Distance From Sun (km^6): " + Info.DistanceFromSun, 25.0f, SCREEN_HEIGHT - 130.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Orbital Period " + Info.OrbitalPeriod, 25.0f, SCREEN_HEIGHT - 150.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Gravity (g): " + Info.Gravity, 25.0f, SCREEN_HEIGHT - 170.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+		RenderText(s, "Surface Temperature (°F): " + Info.SurfaceTemp, 25.0f, SCREEN_HEIGHT - 190.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+
+
+		/*
+		* std::string Diameter;             // km
+	std::string DistanceFromSun;      // million km
+	std::string OrbitalPeriod;        // Earth days
+	std::string RotationPeriod;       // Earth hours
+	std::string SurfaceTemp;
+	std::string NotableFeatures;
+		*/
 	}
 }
